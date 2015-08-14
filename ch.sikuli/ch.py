@@ -1,5 +1,20 @@
 import time
 
+HIGHLIGHTS = False
+LOGFILEPATH = ""
+LEVELSKIP = 16
+SAVEGAME = True
+EXITASCEND = False
+MAXLEVELTIME = 5
+
+###############
+
+state = {}
+
+def resetstate():
+    global state
+    state = { 'ascended': True, 'besthero': False, 'level': 0, 'hired': 0, 'ascendnow': False }
+
 def clickleft(n):
     for x in range(n):
         mouseDown(Button.LEFT)
@@ -27,24 +42,10 @@ def rest(delay=0.1):
         hover("1439022623124.png")
     wait(delay)
 
-def findDown(thing, func, args=[]):
-    while not exists(thing, 0.1):
-        # find scrollbar
-        if exists(Pattern("1439062815605.png").similar(0.86), 0):
-            # scroll down
-            clickn(Pattern("1439062815605.png").similar(0.77).targetOffset(0,2), 4)
-
-        if buyUpgrades():
-            break
-        
-        rest()
-
-    if exists(thing, 0.1):
-        return func(thing, *args)
-    else:
-        return False
-
 def saveGame():
+    if not SAVEGAME:
+        return
+
     if exists(Pattern("1439437506317.png").similar(0.90)):
         click()
         if exists(Pattern("1439437547153.png").similar(0.80)):
@@ -58,6 +59,23 @@ def saveGame():
             wait(0.05)
             if exists(Pattern("1439437994711.png").similar(0.80)):
                 click()
+
+def findDown(thing, func, args=[]):
+    while not exists(thing, 0.1):
+        # find scrollbar
+        if exists(Pattern("1439062815605.png").similar(0.86), 0):
+            # scroll down
+            clickn(Pattern("1439062815605.png").similar(0.77).targetOffset(0,2), 4)
+
+        if buyUpgrades():
+            break
+
+        rest()
+
+    if exists(thing, 0.1):
+        return func(thing, *args)
+    else:
+        return False
 
 # scroll to bottom of hero list
 # check for target
@@ -93,8 +111,6 @@ def buyUpgrades():
     return False
 
 def scrollBottom():
-#        if exists(Pattern("1439436060095.png").similar(0.90).targetOffset(0,-13), 0):
-#            click()
     # Buy All Upgrades
     while not exists(Pattern("1439025589326.png").similar(0.85), 0):
         rest(0.05)
@@ -131,6 +147,7 @@ def ascend():
                 click()
 
     scrollTop()
+
     # Amenhotep
     findDown(Pattern("1439072160611.png").similar(0.75).targetOffset(-74,57), click, [])
     # Yes
@@ -138,7 +155,9 @@ def ascend():
         click()
 
     resetstate()
-    exit(1)
+
+    if EXITASCEND:
+        exit()
 
 # find fish
 def fish():
@@ -168,34 +187,11 @@ def darkRitual():
 
 ###############
 
-def exithotkey(event):
-    exit()
-
-def ascendhotkey(event):
-    ascend()
-
-Env.addHotkey(Key.F1, KeyModifier.CTRL, exithotkey)
-Env.addHotkey(Key.F2, KeyModifier.CTRL, ascendhotkey)
-
-setShowActions(True)
-Settings.UserLogs = True
-Settings.UserLogPrefix = "user"
-Settings.UserLogTime = True
-
-Debug.on(2)
-Debug.setLogFile("d:\\cygwin\\home\\sic\\ch\\ch.log")
-
-Settings.ObserveScanRate = 3
-
-state = { 'ascended': True, 'besthero': False, 'level': 0, 'hired':0 }
-
 def levelchange(event):
-#    Debug.user("Levelchange handler")
     state['level'] += 1
     event.stopObserver()
-#    event.repeat(1)
 
-def checklevel(duration=5):
+def checklevel(duration=MAXLEVELTIME):
     before = state['level']
     levelregion = None
     if exists(Pattern("1439022522525.png").similar(0.85)):
@@ -207,17 +203,38 @@ def checklevel(duration=5):
         r.setW(300)
 
         levelregion = Region(r.getX(), r.getY(), r.getW(), r.getH())
-#        levelregion.highlight()
+        if HIGHLIGHTS:
+            levelregion.highlight()
 
         levelregion.onChange(50, levelchange)
         levelregion.observe(duration)
 
     return before != state['level']
 
-def resetstate():
-    state = { 'ascended': True, 'besthero': False, 'level': 0, 'hired':0 }
+###############
 
-# find top coin to make the window active
+def exithotkey(event):
+    exit()
+
+def ascendhotkey(event):
+    state["ascendnow"] = True
+
+###############
+
+Env.addHotkey(Key.F1, KeyModifier.CTRL, exithotkey)
+Env.addHotkey(Key.F2, KeyModifier.CTRL, ascendhotkey)
+
+setShowActions(True)
+Settings.UserLogs = True
+Settings.UserLogPrefix = "user"
+Settings.UserLogTime = True
+Settings.ObserveScanRate = 3
+
+if LOGFILEPATH:
+    Debug.on(2)
+    Debug.setLogFile(LOGFILEPATH)
+
+# find top crossed swords to make the window active
 if exists(Pattern("1439025078984.png").similar(0.90)):
     click()
     r = getLastMatch()
@@ -230,10 +247,15 @@ if exists(Pattern("1439025078984.png").similar(0.90)):
 Debug.user("")
 Debug.user("Start")
 
+resetstate()
+
 saveGame()
 
 while True:
     Debug.user("Loop start: %s" %state)
+    if state["ascendnow"]:
+        ascend()
+        rest(2)
 
     # 0 DPS
     if exists(Pattern("1439111492693.png").similar(0.93),1):
@@ -241,7 +263,7 @@ while True:
         state['ascended'] = True
         first = True
 
-        for x in range(16):
+        for x in range(LEVELSKIP):
             # skip levels
             clickn("1439078366733.png", 18)
             rest()
@@ -274,9 +296,10 @@ while True:
             r.setX(r.getX() - 110)
             r.setH(r.getH() - 40)
 
-#            r.highlight()
-#            wait(1)
-#            r.highlight()
+            if HIGHLIGHTS:
+                r.highlight()
+                wait(1)
+                r.highlight()
 
             try:
                 r.find(Pattern("1439157133090.png").similar(0.80))
@@ -346,11 +369,14 @@ while True:
 
                 wait(0.5)
                 hirebutton = Region(r.getX(), r.getY(), r.getW(), r.getH())
-#                hirebutton.highlight()
-#                wait(2)
-#                hirebutton.highlight()
+
+                if HIGHLIGHTS:
+                    hirebutton.highlight()
+                    wait(2)
+                    hirebutton.highlight()
+
                 rest()
-            
+
                 try:
                     hirebutton.find(Pattern("1439492761474.png").similar(0.90))
                     Debug.user("failed to level best hero")
