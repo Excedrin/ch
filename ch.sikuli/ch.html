@@ -72,6 +72,30 @@
 <pre class="sikuli-code">
 <span class="kw">import</span> time
 
+HIGHLIGHTS = False
+SAVEPATH = <span class="str">"d:\\cygwin\\home\\sic\\ch\\"</span>
+LOGFILEPATH = <span class="str">"d:\\cygwin\\home\\sic\\ch\\ch.log"</span>
+LEVELSKIP = <span class="dig">10</span>
+SAVEGAME = True
+EXITASCEND = False
+MAXLEVELTIME = <span class="dig">3.5</span>
+SAMURAI = <span class="dig">3</span>
+
+<span class="cmt">###############</span>
+
+state = {}
+
+<span class="kw">def</span> resetstate():
+    <span class="kw">global</span> state
+    state = { <span class="str">'ascended'</span>: True, <span class="str">'besthero'</span>: False, <span class="str">'level'</span>: <span class="dig">0</span>, <span class="str">'hired'</span>: <span class="dig">0</span>, <span class="str">'ascendnow'</span>: False,
+        <span class="str">'starttime'</span>: time.time(), <span class="str">'wait'</span>: False }
+
+<span class="kw">def</span> timediff(start, end=None):
+    <span class="kw">if</span> <span class="kw">not</span> end:
+        end = time.time()
+    diff = end - start
+    <span class="kw">return</span> <span class="str">"%02d:%02d:%02d.%04d"</span> % (diff / <span class="dig">3600</span>, (diff % <span class="dig">3600</span> / <span class="dig">60</span>), diff % <span class="dig">60</span>, (diff % <span class="dig">60</span> - int(diff % <span class="dig">60</span>)) * <span class="dig">10000</span>)
+
 <span class="kw">def</span> clickleft(n):
     <span class="kw">for</span> x <span class="kw">in</span> range(n):
         mouseDown(Button.LEFT)
@@ -99,6 +123,25 @@
         hover(<img src="1439022623124.png" />)
     <span class="skw">wait</span>(delay)
 
+<span class="kw">def</span> saveGame():
+    <span class="kw">if</span> <span class="kw">not</span> SAVEGAME:
+        <span class="kw">return</span>
+
+    <span class="kw">if</span> exists(Pattern(<img src="1439437506317.png" />).similar(<span class="dig">0.90</span>)):
+        <span class="skw">click</span>()
+        <span class="kw">if</span> exists(Pattern(<img src="1439437547153.png" />).similar(<span class="dig">0.80</span>)):
+            <span class="skw">click</span>()
+            <span class="skw">wait</span>(<span class="dig">0.5</span>)
+            timestr = time.strftime(<span class="str">"%Y_%m_%d_%H_%M_%S"</span>)
+            <span class="skw">type</span>(SAVEPATH + timestr)
+            <span class="skw">wait</span>(<span class="dig">0.5</span>)
+            keyDown(Key.ENTER)
+            <span class="skw">wait</span>(<span class="dig">0.05</span>)
+            keyUp(Key.ENTER)
+            <span class="skw">wait</span>(<span class="dig">1</span>)
+            <span class="kw">if</span> exists(Pattern(<img src="1439437994711.png" />).similar(<span class="dig">0.80</span>), <span class="dig">1</span>):
+                <span class="skw">click</span>()
+
 <span class="kw">def</span> findDown(thing, func, args=[]):
     <span class="kw">while</span> <span class="kw">not</span> exists(thing, <span class="dig">0.1</span>):
         <span class="cmt"># find scrollbar</span>
@@ -115,21 +158,6 @@
         <span class="kw">return</span> func(thing, *args)
     <span class="kw">else</span>:
         <span class="kw">return</span> False
-
-<span class="kw">def</span> saveGame():
-    <span class="kw">if</span> exists(Pattern(<img src="1439437506317.png" />).similar(<span class="dig">0.90</span>)):
-        <span class="skw">click</span>()
-        <span class="kw">if</span> exists(Pattern(<img src="1439437547153.png" />).similar(<span class="dig">0.80</span>)):
-            <span class="skw">click</span>()
-            <span class="skw">wait</span>(<span class="dig">0.5</span>)
-            timestr = time.strftime(<span class="str">"%Y_%m_%d_%H_%M_%S"</span>)
-            <span class="skw">type</span>(timestr)
-            keyDown(Key.ENTER)
-            <span class="skw">wait</span>(<span class="dig">0.05</span>)
-            keyUp(Key.ENTER)
-            <span class="skw">wait</span>(<span class="dig">0.05</span>)
-            <span class="kw">if</span> exists(Pattern(<img src="1439437994711.png" />).similar(<span class="dig">0.80</span>)):
-                <span class="skw">click</span>()
 
 <span class="cmt"># scroll to bottom of hero list</span>
 <span class="cmt"># check for target</span>
@@ -165,14 +193,12 @@
     <span class="kw">return</span> False
 
 <span class="kw">def</span> scrollBottom():
-    <span class="cmt"># scroll up once to avoid getting stuck immediately after a new hero is available</span>
-    <span class="kw">if</span> exists(Pattern(<img src="1439036427073.png" />).similar(<span class="dig">0.83</span>), <span class="dig">0</span>):
-        <span class="skw">click</span>()
-        <span class="kw">if</span> exists(Pattern(<img src="1439436060095.png" />).similar(<span class="dig">0.90</span>).targetOffset(<span class="dig">0</span>,-<span class="dig">13</span>), <span class="dig">0</span>):
-            <span class="skw">click</span>()
     <span class="cmt"># Buy All Upgrades</span>
     <span class="kw">while</span> <span class="kw">not</span> exists(Pattern(<img src="1439025589326.png" />).similar(<span class="dig">0.85</span>), <span class="dig">0</span>):
         rest(<span class="dig">0.05</span>)
+        <span class="cmt"># scroll up once to avoid getting stuck immediately after a new hero is available</span>
+        <span class="kw">if</span> exists(Pattern(<img src="1439036427073.png" />).similar(<span class="dig">0.83</span>), <span class="dig">0</span>):
+            <span class="skw">click</span>()
         <span class="cmt"># find scrollbar</span>
         <span class="kw">if</span> exists(Pattern(<img src="1439436060095.png" />).similar(<span class="dig">0.90</span>).targetOffset(<span class="dig">0</span>,-<span class="dig">13</span>), <span class="dig">0</span>):
             <span class="cmt"># scroll down</span>
@@ -182,17 +208,21 @@
 
 <span class="kw">def</span> scrollTop():
     <span class="cmt"># find scroll bar at the top</span>
-    <span class="kw">while</span> <span class="kw">not</span> exists(Pattern(<img src="1439025863027.png" />).similar(<span class="dig">0.80</span>),<span class="dig">0</span>):
-        <span class="cmt"># click crossed swords</span>
-        <span class="kw">if</span> exists(Pattern(<img src="1439025078984.png" />).similar(<span class="dig">0.90</span>)):
-            <span class="skw">click</span>()
+<span class="cmt">#    while not exists(Pattern("1439025863027.png").similar(0.80),0):</span>
+
+    <span class="cmt"># click crossed swords</span>
+    <span class="kw">if</span> exists(Pattern(<img src="1439025078984.png" />).similar(<span class="dig">0.90</span>)):
+        Debug.user(<span class="str">"click crossed swords"</span>)
+        <span class="skw">click</span>()
+    <span class="kw">else</span>:
+        Debug.user(<span class="str">"failed to scroll to the top, didn't find crossed swords"</span>)
 
 <span class="kw">def</span> ascend():
     Debug.user(<span class="str">"ascending now"</span>)
-    scrollTop()
+    saveGame()
 
     <span class="cmt"># Relics</span>
-    <span class="kw">if</span> exists(Pattern(<img src="1439100490944.png" />).similar(<span class="dig">0.90</span>),<span class="dig">1</span>):
+    <span class="kw">if</span> exists(Pattern(<img src="1439100490944.png" />).similar(<span class="dig">0.80</span>),<span class="dig">1</span>):
         <span class="skw">click</span>()
         <span class="skw">wait</span>(<span class="dig">0.5</span>)
         <span class="cmt"># Salvage</span>
@@ -202,17 +232,20 @@
             <span class="cmt"># Yes</span>
             <span class="kw">if</span> exists(Pattern(<img src="1439100607949.png" />).similar(<span class="dig">0.90</span>),<span class="dig">1</span>):
                 <span class="skw">click</span>()
+
     scrollTop()
+
     <span class="cmt"># Amenhotep</span>
     findDown(Pattern(<img src="1439072160611.png" />).similar(<span class="dig">0.75</span>).targetOffset(-<span class="dig">74</span>,<span class="dig">57</span>), <span class="skw">click</span>, [])
     <span class="cmt"># Yes</span>
     <span class="kw">if</span> exists(Pattern(<img src="1439072311108.png" />).similar(<span class="dig">0.91</span>)):
         <span class="skw">click</span>()
 
+    Debug.user(<span class="str">"Time for this run: %s"</span> % timediff(state[<span class="str">"starttime"</span>]))
     resetstate()
-    rest()
 
-    saveGame()
+    <span class="kw">if</span> EXITASCEND:
+        exit()
 
 <span class="cmt"># find fish</span>
 <span class="kw">def</span> fish():
@@ -242,36 +275,14 @@
 
 <span class="cmt">###############</span>
 
-<span class="kw">def</span> exithotkey(event):
-    exit()
-
-<span class="kw">def</span> ascendhotkey(event):
-    ascend()
-
-Env.addHotkey(Key.F1, KeyModifier.CTRL, exithotkey)
-Env.addHotkey(Key.F2, KeyModifier.CTRL, ascendhotkey)
-
-setShowActions(True)
-Settings.UserLogs = True
-Settings.UserLogPrefix = <span class="str">"user"</span>
-Settings.UserLogTime = True
-
-Debug.on(<span class="dig">2</span>)
-Debug.setLogFile(<span class="str">"d:\\cygwin\\home\\sic\\ch\\ch.log"</span>)
-
-Settings.ObserveScanRate = <span class="dig">3</span>
-
-state = { <span class="str">'ascended'</span>: True, <span class="str">'besthero'</span>: False, <span class="str">'level'</span>: <span class="dig">0</span>, <span class="str">'hired'</span>:<span class="dig">0</span> }
-
 <span class="kw">def</span> levelchange(event):
-<span class="cmt">#    Debug.user("Levelchange handler")</span>
     state[<span class="str">'level'</span>] += <span class="dig">1</span>
     event.stopObserver()
-<span class="cmt">#    event.repeat(1)</span>
 
-<span class="kw">def</span> checklevel(duration=<span class="dig">5</span>):
+<span class="kw">def</span> checklevel(duration=MAXLEVELTIME):
     before = state[<span class="str">'level'</span>]
     levelregion = None
+    starttime = time.time()
     <span class="kw">if</span> exists(Pattern(<img src="1439022522525.png" />).similar(<span class="dig">0.85</span>)):
         r = getLastMatch()
 
@@ -281,17 +292,50 @@ state = { <span class="str">'ascended'</span>: True, <span class="str">'besthero
         r.setW(<span class="dig">300</span>)
 
         levelregion = Region(r.getX(), r.getY(), r.getW(), r.getH())
-<span class="cmt">#        levelregion.highlight()</span>
+        <span class="kw">if</span> HIGHLIGHTS:
+            levelregion.highlight()
 
         levelregion.onChange(<span class="dig">50</span>, levelchange)
         levelregion.observe(duration)
 
+    Debug.user(<span class="str">"checklevel time %s"</span> %(timediff(starttime)))
+
     <span class="kw">return</span> before != state[<span class="str">'level'</span>]
 
-<span class="kw">def</span> resetstate():
-    state = { <span class="str">'ascended'</span>: True, <span class="str">'besthero'</span>: False, <span class="str">'level'</span>: <span class="dig">0</span>, <span class="str">'hired'</span>:<span class="dig">0</span> }
+<span class="cmt">###############</span>
 
-<span class="cmt"># find top coin to make the window active</span>
+<span class="kw">def</span> exithotkey(event):
+    exit()
+
+<span class="kw">def</span> ascendhotkey(event):
+    state[<span class="str">"ascendnow"</span>] = True
+
+<span class="kw">def</span> waithotkey(event):
+    <span class="kw">if</span> <span class="str">"wait"</span> <span class="kw">in</span> state:
+        state[<span class="str">"wait"</span>] = <span class="kw">not</span> state[<span class="str">"wait"</span>]
+
+<span class="cmt">###############</span>
+
+Env.addHotkey(Key.F1, KeyModifier.CTRL, exithotkey)
+Env.addHotkey(Key.F2, KeyModifier.CTRL, ascendhotkey)
+Env.addHotkey(Key.F3, KeyModifier.CTRL, waithotkey)
+
+setShowActions(True)
+Settings.UserLogs = True
+Settings.UserLogPrefix = <span class="str">"user"</span>
+Settings.UserLogTime = True
+Settings.ObserveScanRate = <span class="dig">3</span>
+Settings.MoveMouseDelay = <span class="dig">0.1</span>
+
+<span class="kw">if</span> LOGFILEPATH:
+    Debug.on(<span class="dig">2</span>)
+    Debug.setLogFile(LOGFILEPATH)
+
+<span class="cmt"># click the X</span>
+<span class="kw">if</span> exists(Pattern(<img src="1439437994711.png" />).similar(<span class="dig">0.80</span>)):
+    <span class="skw">click</span>()
+
+<span class="cmt"># find top crossed swords to make the window active</span>
 <span class="kw">if</span> exists(Pattern(<img src="1439025078984.png" />).similar(<span class="dig">0.90</span>)):
     <span class="skw">click</span>()
     r = getLastMatch()
@@ -300,14 +344,28 @@ state = { <span class="str">'ascended'</span>: True, <span class="str">'besthero
     r.setH(r.getH() + <span class="dig">650</span>)
     r.setW(r.getW() + <span class="dig">1100</span>)
     setROI(r.getX(), r.getY(), r.getW(), r.getH())
+    roi = Region(r.getX(), r.getY(), r.getW(), r.getH())
+    Debug.user(<span class="str">"screenshot: %s"</span> % SCREEN.<span class="skw">capture</span>(roi))
+
+resetstate()
 
 Debug.user(<span class="str">""</span>)
 Debug.user(<span class="str">"Start"</span>)
 
-saveGame()
-
 <span class="kw">while</span> True:
+
     Debug.user(<span class="str">"Loop start: %s"</span> %state)
+    <span class="kw">if</span> state[<span class="str">"ascendnow"</span>]:
+        ascend()
+        rest(<span class="dig">2</span>)
+
+    <span class="kw">if</span> state[<span class="str">"wait"</span>]:
+        pos = Env.getMouseLocation()
+        Debug.user(<span class="str">"Wait a while %s"</span>%(pos))
+        checklevel()
+        <span class="skw">wait</span>(<span class="dig">1</span>)
+        <span class="kw">continue</span>
+
 
     <span class="cmt"># 0 DPS</span>
     <span class="kw">if</span> exists(Pattern(<img src="1439111492693.png" />).similar(<span class="dig">0.93</span>),<span class="dig">1</span>):
@@ -315,10 +373,11 @@ saveGame()
         state[<span class="str">'ascended'</span>] = True
         first = True
 
-        <span class="kw">for</span> x <span class="kw">in</span> range(<span class="dig">16</span>):
-            <span class="cmt"># skip levels</span>
+        <span class="kw">for</span> x <span class="kw">in</span> range(LEVELSKIP):
+            <span class="cmt"># skip levels, next level arrow</span>
             clickn(<img src="1439078366733.png" />, <span class="dig">18</span>)
             rest()
+            <span class="cmt"># space next to next level arrow</span>
             clickn(Pattern(<img src="1439078366733.png" />).targetOffset(-<span class="dig">60</span>,<span class="dig">0</span>), <span class="dig">1</span>)
 
             <span class="cmt"># click next to shop</span>
@@ -328,8 +387,9 @@ saveGame()
                     first = False
 
             Debug.user(<span class="str">"findDown samurai"</span>)
-            findDown(Pattern(<img src="1439456522754.png" />).similar(<span class="dig">0.90</span>).targetOffset(-<span class="dig">330</span>,<span class="dig">0</span>), zclick, [<span class="dig">20</span>])
+            findDown(Pattern(<img src="1439802146629.png" />).targetOffset(-<span class="dig">230</span>,<span class="dig">15</span>), zclick, [<span class="dig">20</span>])
 
+            <span class="cmt"># necessary to wait a bit at each step in order to collect enough gold to progress</span>
             <span class="skw">wait</span>(<span class="dig">2</span>)
 
         progressMode()
@@ -342,18 +402,26 @@ saveGame()
         scrollTop()
 
         Debug.user(<span class="str">"findDown samurai"</span>)
-        <span class="kw">if</span> findDown(Pattern(<img src="1439456522754.png" />).similar(<span class="dig">0.90</span>), <span class="kw">lambda</span> x: True):
+        <span class="kw">if</span> findDown(Pattern(<img src="1439802146629.png" />).targetOffset(-<span class="dig">230</span>,<span class="dig">15</span>), <span class="kw">lambda</span> x: True):
             r = getLastMatch()
-            r.setW(r.getW() + <span class="dig">30</span>)
-            r.setX(r.getX() - <span class="dig">110</span>)
-            r.setH(r.getH() - <span class="dig">40</span>)
+            r.setW(r.getW() - <span class="dig">80</span>)
+            r.setX(r.getX() + <span class="dig">70</span>)
+            r.setY(r.getY() + <span class="dig">20</span>)
+            <span class="cmt">#r.setH(r.getH() - 10)</span>
 
-<span class="cmt">#            r.highlight()</span>
-<span class="cmt">#            wait(1)</span>
-<span class="cmt">#            r.highlight()</span>
+            <span class="kw">if</span> HIGHLIGHTS:
+                r.highlight()
+                <span class="skw">wait</span>(<span class="dig">3</span>)
+                r.highlight()
 
             <span class="kw">try</span>:
-                r.<span class="skw">find</span>(Pattern(<img src="1439157133090.png" />).similar(<span class="dig">0.80</span>))
+                <span class="kw">if</span> SAMURAI == <span class="dig">3</span>:
+                    r.<span class="skw">find</span>(Pattern(<img src="1439968400139.png" />).similar(<span class="dig">0.93</span>))
+                    <span class="cmt">#r.find(Pattern("1439620371747.png").similar(0.95))</span>
+                <span class="kw">elif</span> SAMURAI == <span class="dig">2</span>:
+                    r.<span class="skw">find</span>(Pattern(<img src="1439567069693.png" />).similar(<span class="dig">0.95</span>))
+                <span class="kw">else</span>:
+                    r.<span class="skw">find</span>(Pattern(<img src="1439157133090.png" />).similar(<span class="dig">0.80</span>))
                 state[<span class="str">'ascended'</span>] = False
                 Debug.user(<span class="str">"found leveled samurai"</span>)
             <span class="kw">except</span>:
@@ -369,44 +437,31 @@ saveGame()
 
         progressMode()
 
+
         Debug.user(<span class="str">"findDown hire: %s"</span> %(state[<span class="str">'hired'</span>]))
         hired = <span class="dig">0</span>
-        <span class="kw">while</span> state[<span class="str">'ascended'</span>] <span class="kw">and</span> \
-                state[<span class="str">'hired'</span>] &lt; <span class="dig">25</span> <span class="kw">and</span> \
+        <span class="kw">if</span> state[<span class="str">'ascended'</span>] <span class="kw">and</span> state[<span class="str">'hired'</span>] &lt; <span class="dig">25</span> <span class="kw">and</span> \
                 findDown(Pattern(<img src="1439151880109.png" />).similar(<span class="dig">0.90</span>), zclick, [<span class="dig">8</span>]):
             rest(<span class="dig">0.01</span>)
 
             <span class="cmt"># unhirable</span>
-            <span class="kw">if</span> exists(Pattern(<img src="1439080954783.png" />).exact(),<span class="dig">0</span>):
-                <span class="kw">break</span>
-            <span class="kw">if</span> exists(Pattern(<img src="1439109333496.png" />).exact(),<span class="dig">0</span>):
-                <span class="kw">break</span>
-            <span class="cmt"># gilded</span>
-            <span class="kw">if</span> exists(Pattern(<img src="1439031334204.png" />).similar(<span class="dig">0.85</span>)):
-                <span class="kw">break</span>
+<span class="cmt">#            if exists(Pattern("1439080954783.png").exact(),0):</span>
+<span class="cmt">#                break</span>
+<span class="cmt">#            if exists(Pattern("1439109333496.png").exact(),0):</span>
+<span class="cmt">#                break</span>
+<span class="cmt">#            # gilded</span>
+<span class="cmt">#            if exists(Pattern("1439031334204.png").similar(0.85)):</span>
+<span class="cmt">#                break</span>
 
             hired += <span class="dig">1</span>
             state[<span class="str">'hired'</span>] += <span class="dig">1</span>
 
-            <span class="kw">if</span> hired &gt; <span class="dig">3</span>:
-                <span class="kw">break</span>
+<span class="cmt">#            if hired &gt; 4:</span>
+<span class="cmt">#                break</span>
 
         Debug.user(<span class="str">"findDown hire done: %s"</span>% hired)
-    <span class="kw">else</span>:
-        <span class="kw">if</span> checklevel():
-            Debug.user(<span class="str">"Level changed"</span>)
-        <span class="kw">else</span>:
-            Debug.user(<span class="str">"Level not changed"</span>)
-            ascend()
-            rest()
-            <span class="kw">continue</span>
 
-        <span class="cmt"># find inactive progression mode</span>
-        <span class="kw">if</span> progressMode():
-            ascend()
-            rest()
-            <span class="kw">continue</span>
-
+    <span class="kw">if</span> <span class="kw">not</span> state[<span class="str">'ascended'</span>]:
         <span class="cmt"># gilded</span>
         Debug.user(<span class="str">"look for gilded heroes"</span>)
         <span class="kw">if</span> findUp(Pattern(<img src="1439148729231.png" />).similar(<span class="dig">0.93</span>).targetOffset(<span class="dig">46</span>,<span class="dig">33</span>), zclick, [<span class="dig">10</span>]):
@@ -420,9 +475,12 @@ saveGame()
 
                 <span class="skw">wait</span>(<span class="dig">0.5</span>)
                 hirebutton = Region(r.getX(), r.getY(), r.getW(), r.getH())
-<span class="cmt">#                hirebutton.highlight()</span>
-<span class="cmt">#                wait(2)</span>
-<span class="cmt">#                hirebutton.highlight()</span>
+
+                <span class="kw">if</span> HIGHLIGHTS:
+                    hirebutton.highlight()
+                    <span class="skw">wait</span>(<span class="dig">2</span>)
+                    hirebutton.highlight()
+
                 rest()
 
                 <span class="kw">try</span>:
@@ -444,6 +502,20 @@ saveGame()
         buyUpgrades()
 
         Debug.user(<span class="str">"done with gild level up"</span>)
+
+        <span class="kw">if</span> checklevel():
+            Debug.user(<span class="str">"Level changed"</span>)
+        <span class="kw">else</span>:
+            Debug.user(<span class="str">"Level not changed"</span>)
+            ascend()
+            rest()
+            <span class="kw">continue</span>
+
+        <span class="cmt"># find inactive progression mode</span>
+        <span class="kw">if</span> progressMode():
+            ascend()
+            rest()
+            <span class="kw">continue</span>
 
     Debug.user(<span class="str">"Loop done: %s"</span> %(state))
 </pre>

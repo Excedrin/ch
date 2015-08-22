@@ -8,6 +8,7 @@ It's possible to exit and restart at any point, it'll look for various features 
 
 CTRL-F1 exit
 CTRL-F2 ascend
+CTRL-F3 pause
 
 ## Automation loop overview:
 
@@ -41,16 +42,22 @@ Save game, filename based on the date and time.
     HIGHLIGHTS = False
     
     full path to log file
-    LOGFILEPATH = ""
+    LOGFILEPATH = "d:\\ch\\ch.log"
     
     number of levels to skip at the start, progressively, levelskip * times 20, for Iris
-    LEVELSKIP = 16
-    
-    save game at start
-    SAVEGAME = True
-    
+    LEVELSKIP = 10
+   
     exit after ascending
     EXITASCEND = False
     
     duration to wait for the level to change
-    MAXLEVELTIME = 5
+    MAXLEVELTIME = 3.5
+
+    path for savegames
+    SAVEPATH = "d:\\ch\\"
+
+    # write save files
+    SAVEGAME = True
+
+    # what level to level Masked Samurai to, 1 = 2xxx, 2 = 27xx, 3 = 3xxx
+    SAMURAI = 3
