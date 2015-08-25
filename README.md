@@ -6,9 +6,9 @@ It's possible to exit and restart at any point, it'll look for various features 
 
 ## Hotkeys
 
-CTRL-F1 exit
-CTRL-F2 ascend
-CTRL-F3 pause
+    CTRL-F1 exit
+    CTRL-F2 ascend now
+    CTRL-F3 pause
 
 ## Automation loop overview:
 
@@ -24,13 +24,13 @@ Save game, filename based on the date and time.
 
     Buy upgrades.
 
-2. If Samurai is already 2000:
+2. If Samurai is already lvl SAMURAI
 
     Level gilded heroes
 
-3. If levels take longer than MAXLEVELTIME:
+3. If zone is past MAXZONE.
 
-    Ascend (including salvaging relics)
+    Wait for a fish. Ascend (including salvaging relics)
 
 4. Click on fish.
 
