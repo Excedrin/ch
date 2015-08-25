@@ -4,12 +4,11 @@ import base64
 import sys
 
 HIGHLIGHTS = False
-SAVEPATH = "d:\\cygwin\\home\\sic\\ch\\"
-LOGFILEPATH = "d:\\cygwin\\home\\sic\\ch\\ch.log"
+SAVEPATH = "d:\\ch\\"
+LOGFILEPATH = "d:\\ch\\ch.log"
 LEVELSKIP = 10
 SAVEGAME = True
 EXITASCEND = False
-MAXLEVELTIME = 4
 
 SAMURAI = 3200
 MAXZONE = 2010
@@ -348,30 +347,6 @@ def levelchange(event):
     state['level'] += 1
     event.stopObserver()
 
-def checklevel(duration=MAXLEVELTIME):
-    before = state['level']
-    levelregion = None
-    starttime = time.time()
-    if exists(Pattern("1439022522525.png").similar(0.85)):
-        r = getLastMatch()
-
-        r.setX(r.getX() - 100)
-        r.setY(r.getY() - 510)
-        r.setH(30)
-        r.setW(300)
-
-        levelregion = Region(r.getX(), r.getY(), r.getW(), r.getH())
-        if HIGHLIGHTS:
-            levelregion.highlight()
-
-        levelregion.onChange(50, levelchange)
-        levelregion.observe(duration)
-
-    diffstr, diff = timediff(starttime)
-    Debug.user("checklevel time %s" %(diffstr))
-
-    return before != state['level']
-
 ###############
 
 def exithotkey(event):
@@ -436,7 +411,6 @@ while True:
     if state["wait"]:
         pos = Env.getMouseLocation()
         Debug.user("Wait a while %s"%(pos))
-        checklevel()
         wait(1)
         continue
 

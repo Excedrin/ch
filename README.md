@@ -59,5 +59,5 @@ Save game, filename based on the date and time.
     # write save files
     SAVEGAME = True
 
-    # what level to level Masked Samurai to, 1 = 2xxx, 2 = 27xx, 3 = 3xxx
-    SAMURAI = 3
+    # what level to level Masked Samurai to
+    SAMURAI = 3200
