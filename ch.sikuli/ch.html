@@ -71,6 +71,9 @@
 </div>
 <pre class="sikuli-code">
 <span class="kw">import</span> time
+<span class="kw">import</span> json
+<span class="kw">import</span> base64
+<span class="kw">import</span> sys
 
 HIGHLIGHTS = False
 SAVEPATH = <span class="str">"d:\\cygwin\\home\\sic\\ch\\"</span>
@@ -78,23 +81,28 @@ LOGFILEPATH = <span class="str">"d:\\cygwin\\home\\sic\\ch\\ch.log"</span>
 LEVELSKIP = <span class="dig">10</span>
 SAVEGAME = True
 EXITASCEND = False
-MAXLEVELTIME = <span class="dig">3.5</span>
-SAMURAI = <span class="dig">3</span>
+MAXLEVELTIME = <span class="dig">4</span>
+SAMURAI = <span class="dig">4</span>
 
 <span class="cmt">###############</span>
+
+heroes = [<span class="str">"Cid"</span>, <span class="str">"Treebeast"</span>, <span class="str">"Ivan"</span>, <span class="str">"Brittany"</span>, <span class="str">"Fisherman"</span>, <span class="str">"Betty"</span>, <span class="str">"Samurai"</span>, <span class="str">"Leon"</span>, <span class="str">"Seer"</span>, <span class="str">"Alexa"</span>,
+    <span class="str">"Natalia"</span>, <span class="str">"Mercedes"</span>, <span class="str">"Bobby"</span>, <span class="str">"Broyle"</span>, <span class="str">"George"</span>, <span class="str">"Midas"</span>, <span class="str">"ReferiJerator"</span>, <span class="str">"Abaddon"</span>,<span class="str">"MaZhu"</span>,
+    <span class="str">"Amenhotep"</span>,<span class="str">"Beastlord"</span>,<span class="str">"Athena"</span>,<span class="str">"Aphrodite"</span>,<span class="str">"Shinatobe"</span>,<span class="str">"Grant"</span>,<span class="str">"Frostleaf"</span>,<span class="str">"DreadKnight"</span>,<span class="str">"Atlas"</span>,
+    <span class="str">"Terra"</span>,<span class="str">"Phthalo"</span>,<span class="str">"Orntchya"</span>,<span class="str">"Lilin"</span>,<span class="str">"Cadmia"</span>,<span class="str">"Alabaster"</span>,<span class="str">"Astraea"</span>]
 
 state = {}
 
 <span class="kw">def</span> resetstate():
     <span class="kw">global</span> state
     state = { <span class="str">'ascended'</span>: True, <span class="str">'besthero'</span>: False, <span class="str">'level'</span>: <span class="dig">0</span>, <span class="str">'hired'</span>: <span class="dig">0</span>, <span class="str">'ascendnow'</span>: False,
-        <span class="str">'starttime'</span>: time.time(), <span class="str">'wait'</span>: False }
+        <span class="str">'starttime'</span>: time.time(), <span class="str">'wait'</span>: False, <span class="str">"primalSouls"</span>: <span class="dig">0</span> }
 
 <span class="kw">def</span> timediff(start, end=None):
     <span class="kw">if</span> <span class="kw">not</span> end:
         end = time.time()
     diff = end - start
-    <span class="kw">return</span> <span class="str">"%02d:%02d:%02d.%04d"</span> % (diff / <span class="dig">3600</span>, (diff % <span class="dig">3600</span> / <span class="dig">60</span>), diff % <span class="dig">60</span>, (diff % <span class="dig">60</span> - int(diff % <span class="dig">60</span>)) * <span class="dig">10000</span>)
+    <span class="kw">return</span> (<span class="str">"%02d:%02d:%02d.%04d"</span> % (diff / <span class="dig">3600</span>, (diff % <span class="dig">3600</span> / <span class="dig">60</span>), diff % <span class="dig">60</span>, (diff % <span class="dig">60</span> - int(diff % <span class="dig">60</span>)) * <span class="dig">10000</span>), diff)
 
 <span class="kw">def</span> clickleft(n):
     <span class="kw">for</span> x <span class="kw">in</span> range(n):
@@ -123,24 +131,84 @@ state = {}
         hover(<img src="1439022623124.png" />)
     <span class="skw">wait</span>(delay)
 
-<span class="kw">def</span> saveGame():
+<span class="kw">def</span> decodeSave(dat):
+    ANTI_CHEAT_CODE = <span class="str">"Fe12NAfA3R6z4k0z"</span>
+
+    first,rest = dat.split(ANTI_CHEAT_CODE,<span class="dig">1</span>)
+
+    txt=<span class="str">""</span>
+    <span class="kw">for</span> i <span class="kw">in</span> range(<span class="dig">0</span>, len(first), <span class="dig">2</span>):
+      txt += first[i]
+
+    base64.b64decode(txt)
+
+    savegame = json.loads(base64.b64decode(txt))
+    <span class="kw">return</span> json.loads(base64.b64decode(txt))
+
+<span class="kw">def</span> checkrelics(save):
+    found = False
+    equip = {}
+    minprimal = <span class="dig">99</span>
+
+    <span class="kw">for</span> x <span class="kw">in</span> save[<span class="str">'items'</span>][<span class="str">'slots'</span>].keys():
+        equip[save[<span class="str">'items'</span>][<span class="str">'slots'</span>][x]] = int(x)
+
+    <span class="kw">for</span> k,v <span class="kw">in</span> save[<span class="str">'items'</span>][<span class="str">'items'</span>].items():
+        <span class="kw">for</span> x <span class="kw">in</span> range(<span class="dig">1</span>,<span class="dig">5</span>):
+            bt = <span class="str">'bonusType%d'</span>%(x)
+            bv = <span class="str">'bonus%dLevel'</span>%(x)
+            <span class="kw">if</span> v[bt] == <span class="dig">17</span>:
+                <span class="kw">if</span> v[bv] &lt; minprimal:
+                    minprimal = v[bv]
+
+    <span class="kw">for</span> k,v <span class="kw">in</span> save[<span class="str">'items'</span>][<span class="str">'items'</span>].items():
+        <span class="kw">if</span> equip[int(k)] &gt; save[<span class="str">'items'</span>][<span class="str">'equipmentSlots'</span>]:
+            Debug.user(<span class="str">"relic: %s %s"</span> % (k, v))
+            <span class="kw">for</span> x <span class="kw">in</span> range(<span class="dig">1</span>,<span class="dig">5</span>):
+                bt = <span class="str">'bonusType%d'</span>%(x)
+                bv = <span class="str">'bonus%dLevel'</span>%(x)
+                <span class="kw">if</span> v[bt] == <span class="dig">17</span>:
+                    <span class="kw">if</span> v[bv] &gt;= minprimal:
+                        found = True
+
+    <span class="kw">return</span> found
+
+<span class="kw">def</span> updateFromSave():
+    savedata = saveGame(savefile=False)
+    save = decodeSave(savedata)
+
+    state[<span class="str">"primalSouls"</span>] = save[<span class="str">"primalSouls"</span>]
+
+    <span class="kw">for</span> k <span class="kw">in</span> [<span class="str">"primalSouls"</span>, <span class="str">"highestFinishedZone"</span>, <span class="str">"rubies"</span>, <span class="str">"totalHeroSouls"</span>, <span class="str">"currentZoneHeight"</span>]:
+        Debug.user(<span class="str">"%s: %s"</span>%(k, save[k]))
+
+<span class="kw">def</span> saveGame(savefile=True):
     <span class="kw">if</span> <span class="kw">not</span> SAVEGAME:
-        <span class="kw">return</span>
+        savefile = False
 
     <span class="kw">if</span> exists(Pattern(<img src="1439437506317.png" />).similar(<span class="dig">0.90</span>)):
         <span class="skw">click</span>()
         <span class="kw">if</span> exists(Pattern(<img src="1439437547153.png" />).similar(<span class="dig">0.80</span>)):
             <span class="skw">click</span>()
             <span class="skw">wait</span>(<span class="dig">0.5</span>)
-            timestr = time.strftime(<span class="str">"%Y_%m_%d_%H_%M_%S"</span>)
-            <span class="skw">type</span>(SAVEPATH + timestr)
-            <span class="skw">wait</span>(<span class="dig">0.5</span>)
-            keyDown(Key.ENTER)
-            <span class="skw">wait</span>(<span class="dig">0.05</span>)
-            keyUp(Key.ENTER)
-            <span class="skw">wait</span>(<span class="dig">1</span>)
+            <span class="kw">if</span> savefile:
+                timestr = time.strftime(<span class="str">"%Y_%m_%d_%H_%M_%S"</span>)
+                <span class="skw">type</span>(SAVEPATH + timestr)
+                <span class="skw">wait</span>(<span class="dig">0.5</span>)
+                keyDown(Key.ENTER)
+                <span class="skw">wait</span>(<span class="dig">0.05</span>)
+                keyUp(Key.ENTER)
+                <span class="skw">wait</span>(<span class="dig">1</span>)
+            <span class="kw">else</span>:
+                keyDown(Key.ESC)
+                <span class="skw">wait</span>(<span class="dig">0.05</span>)
+                keyUp(Key.ESC)
+                <span class="skw">wait</span>(<span class="dig">1</span>)
+
             <span class="kw">if</span> exists(Pattern(<img src="1439437994711.png" />).similar(<span class="dig">0.80</span>), <span class="dig">1</span>):
                 <span class="skw">click</span>()
+
+    <span class="kw">return</span> Env.getClipboard()
 
 <span class="kw">def</span> findDown(thing, func, args=[]):
     <span class="kw">while</span> <span class="kw">not</span> exists(thing, <span class="dig">0.1</span>):
@@ -171,7 +239,7 @@ state = {}
             clickn(Pattern(<img src="1439036427073.png" />).similar(<span class="dig">0.83</span>), <span class="dig">4</span>)
 
         <span class="cmt"># scrolled to top</span>
-        <span class="kw">if</span> exists(Pattern(<img src="1439025863027.png" />).similar(<span class="dig">0.90</span>),<span class="dig">0</span>):
+        <span class="kw">if</span> exists(Pattern(<img src="1439025863027.png" />).similar(<span class="dig">0.83</span>),<span class="dig">0</span>):
             <span class="kw">break</span>
 
     <span class="kw">if</span> exists(thing, <span class="dig">0</span>):
@@ -219,7 +287,18 @@ state = {}
 
 <span class="kw">def</span> ascend():
     Debug.user(<span class="str">"ascending now"</span>)
-    saveGame()
+    savedata = saveGame()
+    save = decodeSave(savedata)
+
+    collectedsouls = save[<span class="str">"primalSouls"</span>] - state[<span class="str">"primalSouls"</span>]
+
+    <span class="kw">for</span> k <span class="kw">in</span> [<span class="str">"primalSouls"</span>, <span class="str">"highestFinishedZone"</span>, <span class="str">"rubies"</span>, <span class="str">"totalHeroSouls"</span>, <span class="str">"currentZoneHeight"</span>]:
+        Debug.user(<span class="str">"%s: %s"</span>%(k, save[k]))
+
+    <span class="kw">if</span> checkrelics(save):
+        <span class="cmt"># found a better relic than current, don't trash it, abort instead</span>
+        Debug.user(<span class="str">"found better relic, not ascending"</span>)
+        <span class="kw">return</span>
 
     <span class="cmt"># Relics</span>
     <span class="kw">if</span> exists(Pattern(<img src="1439100490944.png" />).similar(<span class="dig">0.80</span>),<span class="dig">1</span>):
@@ -241,8 +320,15 @@ state = {}
     <span class="kw">if</span> exists(Pattern(<img src="1439072311108.png" />).similar(<span class="dig">0.91</span>)):
         <span class="skw">click</span>()
 
-    Debug.user(<span class="str">"Time for this run: %s"</span> % timediff(state[<span class="str">"starttime"</span>]))
+    diffstr, diff = timediff(state[<span class="str">"starttime"</span>])
+
+    rate = <span class="dig">0</span>
+    <span class="kw">if</span> diff &gt; <span class="dig">0</span>:
+        rate = collectedsouls / diff
+
+    Debug.user(<span class="str">"Time for this run: %s rate: %f"</span> % (diffstr, rate))
     resetstate()
+    updateFromSave()
 
     <span class="kw">if</span> EXITASCEND:
         exit()
@@ -298,7 +384,8 @@ state = {}
         levelregion.onChange(<span class="dig">50</span>, levelchange)
         levelregion.observe(duration)
 
-    Debug.user(<span class="str">"checklevel time %s"</span> %(timediff(starttime)))
+    diffstr, diff = timediff(starttime)
+    Debug.user(<span class="str">"checklevel time %s"</span> %(diffstr))
 
     <span class="kw">return</span> before != state[<span class="str">'level'</span>]
 
@@ -352,6 +439,8 @@ resetstate()
 Debug.user(<span class="str">""</span>)
 Debug.user(<span class="str">"Start"</span>)
 
+updateFromSave()
+
 <span class="kw">while</span> True:
 
     Debug.user(<span class="str">"Loop start: %s"</span> %state)
@@ -373,9 +462,11 @@ Debug.user(<span class="str">"Start"</span>)
         state[<span class="str">'ascended'</span>] = True
         first = True
 
+        <span class="skw">wait</span>(<span class="dig">1</span>)
+
         <span class="kw">for</span> x <span class="kw">in</span> range(LEVELSKIP):
             <span class="cmt"># skip levels, next level arrow</span>
-            clickn(<img src="1439078366733.png" />, <span class="dig">18</span>)
+            clickn(Pattern(<img src="1439078366733.png" />), <span class="dig">18</span>)
             rest()
             <span class="cmt"># space next to next level arrow</span>
             clickn(Pattern(<img src="1439078366733.png" />).targetOffset(-<span class="dig">60</span>,<span class="dig">0</span>), <span class="dig">1</span>)
@@ -404,8 +495,8 @@ Debug.user(<span class="str">"Start"</span>)
         Debug.user(<span class="str">"findDown samurai"</span>)
         <span class="kw">if</span> findDown(Pattern(<img src="1439802146629.png" />).targetOffset(-<span class="dig">230</span>,<span class="dig">15</span>), <span class="kw">lambda</span> x: True):
             r = getLastMatch()
-            r.setW(r.getW() - <span class="dig">80</span>)
-            r.setX(r.getX() + <span class="dig">70</span>)
+            r.setW(r.getW() - <span class="dig">70</span>)
+            r.setX(r.getX() + <span class="dig">60</span>)
             r.setY(r.getY() + <span class="dig">20</span>)
             <span class="cmt">#r.setH(r.getH() - 10)</span>
 
@@ -415,7 +506,9 @@ Debug.user(<span class="str">"Start"</span>)
                 r.highlight()
 
             <span class="kw">try</span>:
-                <span class="kw">if</span> SAMURAI == <span class="dig">3</span>:
+                <span class="kw">if</span> SAMURAI == <span class="dig">4</span>:
+                    r.<span class="skw">find</span>(Pattern(<img src="1440322132646.png" />).similar(<span class="dig">0.93</span>))
+                <span class="kw">elif</span> SAMURAI == <span class="dig">3</span>:
                     r.<span class="skw">find</span>(Pattern(<img src="1439968400139.png" />).similar(<span class="dig">0.93</span>))
                     <span class="cmt">#r.find(Pattern("1439620371747.png").similar(0.95))</span>
                 <span class="kw">elif</span> SAMURAI == <span class="dig">2</span>:
