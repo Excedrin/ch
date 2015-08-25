@@ -50,10 +50,7 @@ Save game, filename based on the date and time.
     exit after ascending
     EXITASCEND = False
     
-    duration to wait for the level to change
-    MAXLEVELTIME = 3.5
-
-    path for savegames
+    # path for savegames
     SAVEPATH = "d:\\ch\\"
 
     # write save files
@@ -61,3 +58,6 @@ Save game, filename based on the date and time.
 
     # what level to level Masked Samurai to
     SAMURAI = 3200
+
+    # what zone to reach before ascending
+    MAXZONE = 2010
