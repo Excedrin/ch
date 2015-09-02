@@ -3,25 +3,51 @@ import json
 import base64
 import sys
 
+# for debugging, highlight some areas of interest
 HIGHLIGHTS = False
-SAVEPATH = "d:\\ch\\"
+
+# full path to log file
 LOGFILEPATH = "d:\\ch\\ch.log"
-LEVELSKIP = 10
+
+# path for savegames
+SAVEPATH = "d:\\ch\\"
+
+# write save files
 SAVEGAME = True
+
+# number of levels to skip at the start, progressively, levelskip * times 20, for Iris
+LEVELSKIP = 10
+
+# exit after ascending
 EXITASCEND = False
 
-SAMURAI = 3200
-MAXZONE = 2010
+# use this key to activate autoclicker
+AUTOCLICKERKEY = Key.F8
+
+# options "Samurai" "Midas" "Frostleaf" "DreadKnight" "Atlas" "Terra" "Phthalo" "Orntchya"
+INITIALHERO = "Phthalo"
+
+# level to at least this level:
+INITIALLVL = 1000
+
+# stop clicking fish when past this zone
+NOFISHZONE = 2370
+
+# start clicking monsters past this zone
+DEEPZONE = 2080
+
+# wait for a fish and ascend at this zone
+MAXZONE = 2520
 
 ###############
 
-heroes = ["Cid", "Treebeast", "Ivan", "Brittany", "Fisherman", "Betty", "Samurai", "Leon", "Seer", "Alexa",
-    "Natalia", "Mercedes", "Bobby", "Broyle", "George", "Midas", "ReferiJerator", "Abaddon","MaZhu",
-    "Amenhotep","Beastlord","Athena","Aphrodite","Shinatobe","Grant","Frostleaf","DreadKnight","Atlas",
-    "Terra","Phthalo","Orntchya","Lilin","Cadmia","Alabaster","Astraea"]
+heroes = ['Cid', 'Treebeast', 'Ivan', 'Brittany', 'Fisherman', 'Betty', 'Samurai', 'Leon', 'Seer', 'Alexa',
+    'Natalia', 'Mercedes', 'Bobby', 'Broyle', 'George', 'Midas', 'ReferiJerator', 'Abaddon','MaZhu',
+    'Amenhotep','Beastlord','Athena','Aphrodite','Shinatobe','Grant','Frostleaf','DreadKnight','Atlas',
+    'Terra','Phthalo','Orntchya','Lilin','Cadmia','Alabaster','Astraea']
 
-heroidx = dict(map(lambda x: (heroes[x], x+1), range(len(heroes))))
-heroname = dict(map(lambda x: (x+1, heroes[x]), range(len(heroes))))
+heroidx = { heroes[x]: x+1 for x in range(len(heroes)) }
+heroname = { y: x for x,y in heroidx.items() }
 
 state = {}
 
@@ -31,21 +57,21 @@ def resetstate():
         'ascendNow': False,
         'ascendSoon': False,
         'besthero': False,
-        'level': 0,
         'hired': 0,
+        'frostleaf': 0,
         'starttime': time.time(),
         'wait': False,
         'primalSouls': 0,
         'primalSoulsStart': 0,
-        'samurai': 0,
+        'initial': 0,
         'gold': 0,
         'maxgildidx': 0,
         'gild1level': 0,
         'gild2level': 0,
 
-        'highestFinishedZone': 0, 
-        'rubies': 0, 
-        'totalHeroSouls': 0, 
+        'highestFinishedZone': 0,
+        'rubies': 0,
+        'totalHeroSouls': 0,
         'currentZoneHeight': 0,
         'gold': 0
     }
@@ -68,31 +94,37 @@ def clickn(what=None, n=1, mod=0):
         hover(getLastMatch())
     clickleft(n)
 
-def zclick(thing, count):
+def zclick(thing, count, key='z'):
     hover(thing)
-    keyDown('z')
-    wait(0.05)
+    keyDown(key)
+    wait(0.1)
     clickleft(count)
     wait(0.05)
-    keyUp('z')
+    keyUp(key)
     wait(0.1)
     return True
+
+def qclick(thing):
+    return zclick(thing, 1, 'q')
 
 # find fish
 def fish():
     if exists(Pattern("1439028358739.png").similar(0.85),0):
-        if not state["ascendSoon"]:
+        if state['ascendSoon'] or state['highestFinishedZone'] > NOFISHZONE:
+            Debug.user("ascending soon, saving fish")
+        else:
             click()
             Debug.user("fish")
-        else:
-            Debug.user("ascending soon, saving fish")
         return True
     return False
 
 def rest(delay=0.1):
     fish()
     if exists("1439022623124.png"):
-        hover("1439022623124.png")
+        hover(getLastMatch())
+    if state['highestFinishedZone'] > DEEPZONE or state['highestFinishedZone'] > MAXZONE:
+        nearShop(click)
+
     wait(delay)
 
 def decodeSave(dat):
@@ -138,48 +170,61 @@ def checkrelics(save):
 
     return found
 
+def dumpHeroInfo(save):
+    for idx, hero in sorted(save['heroCollection']['heroes'].items(), key=lambda (x,y): int(x)):
+        Debug.user("%s %s level %d" % (idx, heroname[int(idx)], hero['level']))
+
 def updateFromSave():
     savedata = saveGame(savefile=False)
     save = decodeSave(savedata)
 
-    state["samurai"] = save["heroCollection"]["heroes"][unicode(heroidx["Samurai"])]["level"]
-
+    state['initial'] = save['heroCollection']['heroes'][unicode(heroidx[INITIALHERO])]['level']
+    state['frostleaf'] = save['heroCollection']['heroes'][unicode(heroidx['Frostleaf'])]['level']
 
     maxGildIdx = 0
     maxGild = 0
     hired = 0
 
-    for idx, hero in save["heroCollection"]["heroes"].items():
-        if hero["level"] > 0:
+    for idx, hero in save['heroCollection']['heroes'].items():
+        if hero['level'] > 0:
             hired += 1
-        if hero["epicLevel"] > maxGild:
-            maxGild = hero["epicLevel"]
-            maxGildIdx = hero["id"]
+        if hero['epicLevel'] > maxGild:
+            maxGild = hero['epicLevel']
+            maxGildIdx = hero['id']
 
-    state["hired"] = hired
-    state["maxgildidx"] = maxGildIdx
+    state['hired'] = hired
+    state['maxgildidx'] = maxGildIdx
 
-    state["gild1level"] = save["heroCollection"]["heroes"][unicode(maxGildIdx)]["level"]
-    state["gild2level"] = save["heroCollection"]["heroes"][unicode(maxGildIdx - 1)]["level"]
+    state['gild1level'] = save['heroCollection']['heroes'][unicode(maxGildIdx)]['level']
+    state['gild2level'] = save['heroCollection']['heroes'][unicode(maxGildIdx - 1)]['level']
 
-    Debug.user("maxGild: %d %d %s %d" %(maxGild, maxGildIdx, heroname[maxGildIdx], state["gild1level"]))
+    Debug.user("maxGild: %d %d %s %d" %(maxGild, maxGildIdx, heroname[maxGildIdx], state['gild1level']))
 
-    for k in ["primalSouls", "highestFinishedZone", "rubies", "totalHeroSouls", "currentZoneHeight",
-        "gold"]:
+    for k in ['primalSouls', 'highestFinishedZone', 'rubies', 'totalHeroSouls', 'currentZoneHeight', 'gold', 'titanDamage']:
         state[k] = save[k]
         Debug.user("%s: %s"%(k, save[k]))
 
     return save
 
+def allHired(save):
+    idx = heroidx['Frostleaf']
+    b = True
+    for x in range(1, idx+1):
+        b = b and save['heroCollection']['heroes'][unicode(x)]['level'] >= 200
+        #Debug.user("idx: %d level: %d" %(x, save['heroCollection']['heroes'][unicode(x)]['level']))
+
+    return b
+
 def saveGame(savefile=True):
     if not SAVEGAME:
         savefile = False
 
-    if exists(Pattern("1439437506317.png").similar(0.90)):
+    if exists(Pattern("1439437506317.png").similar(0.90), 1):
         click()
-        if exists(Pattern("1439437547153.png").similar(0.80)):
+        wait(1)
+        if exists(Pattern("1439437547153.png").similar(0.80), 1):
             click()
-            wait(0.5)
+            wait(1)
             if savefile:
                 timestr = time.strftime("%Y_%m_%d_%H_%M_%S")
                 type(SAVEPATH + timestr)
@@ -189,11 +234,13 @@ def saveGame(savefile=True):
                 keyUp(Key.ENTER)
                 wait(1)
             else:
+                wait(1)
                 keyDown(Key.ESC)
                 wait(0.05)
                 keyUp(Key.ESC)
                 wait(1)
 
+            wait(1)
             if exists(Pattern("1439437994711.png").similar(0.80), 1):
                 click()
 
@@ -211,6 +258,8 @@ def findDown(thing, func, args=[]):
 
         rest()
 
+    rest()
+
     if exists(thing, 0.1):
         return func(thing, *args)
     else:
@@ -223,6 +272,7 @@ def findUp(thing, func, args=[]):
     scrollBottom()
 
     while not exists(thing, 0):
+        Debug.user("findUp loop")
         # scroll up button
         if exists(Pattern("1439036427073.png").similar(0.83),0):
             clickn(Pattern("1439036427073.png").similar(0.83), 4)
@@ -250,6 +300,7 @@ def buyUpgrades():
     return False
 
 def scrollBottom():
+    Debug.user("scrollBottom")
     # Buy All Upgrades
     while not exists(Pattern("1439025589326.png").similar(0.85), 0):
         rest(0.05)
@@ -274,14 +325,35 @@ def scrollTop():
     else:
         Debug.user("failed to scroll to the top, didn't find crossed swords")
 
+def locateHero(hero, func, args=[]):
+    Debug.user("findUp %s" %(hero))
+    heropatterns = {
+        "Samurai": Pattern("Samurai.png").targetOffset(-230,0),
+        "Midas": Pattern("Midas.png").targetOffset(-242,7),
+        "Frostleaf": Pattern("Frostleaf.png").targetOffset(-255,7),
+        "DreadKnight": Pattern("DreadKnight.png").targetOffset(-235,8),
+        "Atlas": Pattern("Atlas.png").targetOffset(-271,8),
+        "Terra": Pattern("Terra.png").targetOffset(-269,6),
+        "Phthalo": Pattern("Phthalo.png").targetOffset(-262,4),
+        "Orntchya": Pattern("Orntchya.png").targetOffset(-184,7)
+    }
+    return findUp(heropatterns[hero], func, args)
+
+def calcrate():
+    collectedsouls = save['primalSouls'] - state['primalSoulsStart']
+    diffstr, diff = timediff(state['starttime'])
+    rate = 0
+    if diff > 0:
+        rate = collectedsouls / diff
+
+    Debug.user("Time for this run: %s rate: %f" % (diffstr, rate))
+
 def ascend():
     Debug.user("ascending now")
     savedata = saveGame()
     save = decodeSave(savedata)
 
-    collectedsouls = save["primalSouls"] - state["primalSoulsStart"]
-
-    for k in ["primalSouls", "highestFinishedZone", "rubies", "totalHeroSouls", "currentZoneHeight"]:
+    for k in ['primalSouls', 'highestFinishedZone', 'rubies', 'totalHeroSouls', 'currentZoneHeight']:
         Debug.user("%s: %s"%(k, save[k]))
 
     if checkrelics(save):
@@ -290,6 +362,7 @@ def ascend():
         return
 
     # Relics
+    Debug.user("Salvage relics")
     if exists(Pattern("1439100490944.png").similar(0.80),1):
         click()
         wait(0.5)
@@ -303,49 +376,88 @@ def ascend():
 
     scrollTop()
 
+    Debug.user("find Amenhotep")
     # Amenhotep
     findDown(Pattern("1439072160611.png").similar(0.75).targetOffset(-74,57), click, [])
+
+    Debug.user("click Yes")
     # Yes
     if exists(Pattern("1439072311108.png").similar(0.91)):
         click()
 
-    diffstr, diff = timediff(state["starttime"])
-
-    rate = 0
-    if diff > 0:
-        rate = collectedsouls / diff
-
-    Debug.user("Time for this run: %s rate: %f" % (diffstr, rate))
-    updateFromSave()
+    calcrate()
 
     if EXITASCEND:
         exit()
+
+def hireHeroes():
+    scrollTop()
+
+    hire = 0
+
+    Debug.user("findDown hire: %s" %(state['hired']))
+    hired = state['hired']
+    while findDown(Pattern("1439151880109.png").similar(0.90), zclick, [8]):
+        rest(0.01)
+
+        hired += 1
+        hire += 1
+
+        if hire > 4:
+            break
+
+    Debug.user("findDown hire done: %s"% hired)
 
 # find available dark ritual with energize etc
 def darkRitual():
     if exists(Pattern("1439478702484.png").similar(0.90)):
         if exists(Pattern("1439368983011.png").similar(0.80),0):
             Debug.user("activate dark ritual")
-            keyDown('8')
-            wait(0.1)
-            keyUp('8')
-            wait(0.1)
+            type('869')
 
-            keyDown('6')
-            wait(0.1)
-            keyUp('6')
-            wait(0.1)
+def nearShop(f):
+    if exists(Pattern("1439022522525.png").similar(0.85).targetOffset(-90,-40)):
+        f(getLastMatch())
 
-            keyDown('9')
-            wait(0.1)
-            keyUp('9')
-            wait(0.1)
+def clicker(monsterArea, duration):
+    endtime = time.time() + duration
+    remaining = endtime - time.time()
 
-###############
+    hover(monsterArea)
+    wait(0.1)
+    keyDown(AUTOCLICKERKEY)
+    wait(0.1)
+    keyUp(AUTOCLICKERKEY)
 
-def levelchange(event):
-    state['level'] += 1
-    event.stopObserver()
+    while remaining > 0:
+        Debug.user("click monsters remaining time: %d" %(remaining))
+
+        keyDown(AUTOCLICKERKEY)
+        wait(0.1)
+        keyUp(AUTOCLICKERKEY)
+
+        fish()
+
+        keyDown(AUTOCLICKERKEY)
+        wait(0.1)
+        keyUp(AUTOCLICKERKEY)
+
+        hover(monsterArea)
+
+        type('123457')
+        wait(10)
+
+        remaining = endtime - time.time()
+
+    keyDown(AUTOCLICKERKEY)
+    wait(0.1)
+    keyUp(AUTOCLICKERKEY)
+
+    wait(3)
+
+def clickMonsters(duration=150):
+    progressMode()
+    nearShop(lambda x: clicker(x, duration))
 
 ###############
 
@@ -353,11 +465,11 @@ def exithotkey(event):
     exit()
 
 def ascendhotkey(event):
-    state["ascendNow"] = True
+    state['ascendNow'] = True
 
 def waithotkey(event):
     if "wait" in state:
-        state["wait"] = not state["wait"]
+        state['wait'] = not state['wait']
 
 ###############
 
@@ -376,10 +488,6 @@ if LOGFILEPATH:
     Debug.on(2)
     Debug.setLogFile(LOGFILEPATH)
 
-# click the X
-if exists(Pattern("1439437994711.png").similar(0.80)):
-    click()
-
 # find top crossed swords to make the window active
 if exists(Pattern("1439025078984.png").similar(0.90)):
     click()
@@ -390,11 +498,12 @@ if exists(Pattern("1439025078984.png").similar(0.90)):
     r.setW(r.getW() + 1100)
     setROI(r.getX(), r.getY(), r.getW(), r.getH())
     roi = Region(r.getX(), r.getY(), r.getW(), r.getH())
-    Debug.user("screenshot: %s" % SCREEN.capture(roi))
+    #Debug.user("screenshot: %s" % SCREEN.capture(roi))
 
 resetstate()
 save = updateFromSave()
-state["primalSoulsStart"] = state["primalSouls"]
+dumpHeroInfo(save)
+state['primalSoulsStart'] = state['primalSouls']
 
 Debug.user("")
 Debug.user("Start")
@@ -403,33 +512,51 @@ while True:
 
     Debug.user("Loop start: %s" %state)
 
-    if (state["ascendSoon"] and fish()) or state["ascendNow"]:
+    if state['wait']:
+        popup("Sikulix paused")
+        # toggle wait off
+        waithotkey(None)
+        continue
+
+    # past ideal zone
+    if state['highestFinishedZone'] > NOFISHZONE:
+        state['ascendSoon'] = True
+        Debug.user("Ascend Soon")
+
+    if state['highestFinishedZone'] > DEEPZONE or state['highestFinishedZone'] > MAXZONE:
+        clickMonsters()
+
+    if (state['ascendSoon'] and fish() and state['highestFinishedZone'] > MAXZONE) or state['ascendNow']:
         Debug.user("Ascend Now")
+        dumpHeroInfo(save)
         ascend()
         rest(2)
 
-    if state["wait"]:
-        pos = Env.getMouseLocation()
-        Debug.user("Wait a while %s"%(pos))
-        wait(1)
-        continue
-
     save = updateFromSave()
+    calcrate()
 
     # 0 DPS
-    if state["hired"] == 0:
-#    if exists(Pattern("1439111492693.png").similar(0.93),1):
+    if state['hired'] == 0:
         Debug.user("found 0 dps")
 
         wait(1)
         resetstate()
-        state["primalSoulsStart"] = state["primalSouls"]
+        state['primalSoulsStart'] = state['primalSouls']
 
         if fish():
             Debug.user("Found fish, waiting..")
             wait(5)
-            Debug.user("findDown samurai")
-            findDown(Pattern("1439802146629.png").targetOffset(-230,15), zclick, [100])
+
+            locateHero("Midas", zclick, [8])
+            locateHero(INITIALHERO, qclick)
+            progressMode()
+
+            scrollBottom()
+            buyUpgrades()
+            scrollTop()
+
+            clickMonsters(60)
+            locateHero(INITIALHERO, qclick)
         else:
             first = True
 
@@ -442,26 +569,21 @@ while True:
 
                 # click next to shop
                 if first:
-                    if exists(Pattern("1439022522525.png").similar(0.85).targetOffset(-60,0)):
-                        clickn(getLastMatch(), 25)
-                        first = False
+                    nearShop(lambda x: clickn(x, 25))
+                    first = False
 
-                Debug.user("findDown samurai")
-                findDown(Pattern("1439802146629.png").targetOffset(-230,15), zclick, [20])
+                locateHero(INITIALHERO, qclick)
 
                 # necessary to wait a bit at each step in order to collect enough gold to progress
                 wait(2)
 
         progressMode()
 
-    fish()
-    darkRitual()
-
-    if state['samurai'] < SAMURAI:
+    elif state['initial'] < INITIALLVL:
         scrollTop()
 
-        Debug.user("findDown samurai")
-        findDown(Pattern("1439802146629.png").targetOffset(-230,15), zclick, [20])
+        locateHero(INITIALHERO, qclick)
+        rest()
 
         scrollBottom()
         buyUpgrades()
@@ -469,22 +591,14 @@ while True:
 
         progressMode()
 
-        if state['samurai'] > SAMURAI / 2:
-            Debug.user("findDown hire: %s" %(state['hired']))
-            hired = state['hired']
-            while hired < 26 and \
-                    findDown(Pattern("1439151880109.png").similar(0.90), zclick, [8]):
-                rest(0.01)
-
-                hired += 1
-
-            Debug.user("findDown hire done: %s"% hired)
+        if not allHired(save):
+            hireHeroes()
 
     else:
         # gilded
         Debug.user("look for gilded heroes")
-        if findUp(Pattern("1439148729231.png").similar(0.93).targetOffset(46,33), zclick, [10]):
-            if not state["besthero"]:
+        if findUp(Pattern("1439148729231.png").similar(0.93).targetOffset(46,33), qclick):
+            if not state['besthero']:
                 r = getLastMatch()
 
                 r.setX(r.getX() + 40)
@@ -506,7 +620,7 @@ while True:
                     hirebutton.find(Pattern("1439492761474.png").similar(0.90))
                     Debug.user("failed to level best hero")
                     if exists(Pattern("1439031334204.png").similar(0.85).targetOffset(16,11)):
-                        zclick(getLastMatch(), 10)
+                        qclick(getLastMatch())
                         Debug.user("leveled secondary gilded hero")
                 except:
                     Debug.user("found hired best hero")
@@ -514,17 +628,23 @@ while True:
                     pass
 
         else:
-            findUp(Pattern("1439031334204.png").similar(0.85).targetOffset(16,11), zclick, [10])
+            findUp(Pattern("1439031334204.png").similar(0.85).targetOffset(16,11), qclick)
             Debug.user("leveled secondary hero, didn't find primary")
-
-        scrollBottom()
-        buyUpgrades()
 
         Debug.user("done with gild level up")
 
+        scrollBottom()
+        buyUpgrades()
+        scrollTop()
+
+        if not allHired(save):
+            hireHeroes()
+
         # find inactive progression mode
-        if progressMode() or state["highestFinishedZone"] > MAXZONE:
-            state["ascendSoon"] = True
+        if progressMode() or state['highestFinishedZone'] > NOFISHZONE or state['highestFinishedZone'] > MAXZONE:
+            state['ascendSoon'] = True
             Debug.user("Ascend Soon")
+
+    darkRitual()
 
     Debug.user("Loop done: %s" %(state))

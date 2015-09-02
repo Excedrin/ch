@@ -1,14 +1,18 @@
 # Clicker Heroes sikulix automation
 
-Generally for a mid/late game, plays idle style. Expects 2 adjacent gilded heroes.
+Generally for a mid/late game, plays hybrid style. Expects 2 adjacent gilded heroes.
 
-It's possible to exit and restart at any point, it'll look for various features to determine what it should be doing.
+It's possible to exit and restart at any point, it'll parse save info to pick up where it left off.
 
 ## Hotkeys
 
     CTRL-F1 exit
     CTRL-F2 ascend now
     CTRL-F3 pause
+
+## Notes
+
+For windows, http://sourceforge.net/projects/fastclicker/ is a good autoclicker
 
 ## Automation loop overview:
 
@@ -18,13 +22,13 @@ Save game, filename based on the date and time.
 
 1. If we're at 0 DPS:
 
-    Level up Masked Samurai, to at least 2000.
+    Level up INITIALHERO, to at least INITIALLVL.
 
-    Level 25 other heroes to 200.
+    Level other heroes (thru Frostleaf) to 200.
 
     Buy upgrades.
 
-2. If Samurai is already lvl SAMURAI
+2. If INITIALHERO is already lvl INITIALLVL
 
     Level gilded heroes
 
@@ -38,26 +42,39 @@ Save game, filename based on the date and time.
 
 ## Some editable settings:
 
-    for debugging, highlight some areas of interest
+    # for debugging, highlight some areas of interest
     HIGHLIGHTS = False
-    
-    full path to log file
+
+    # full path to log file
     LOGFILEPATH = "d:\\ch\\ch.log"
-    
-    number of levels to skip at the start, progressively, levelskip * times 20, for Iris
-    LEVELSKIP = 10
-   
-    exit after ascending
-    EXITASCEND = False
-    
+
     # path for savegames
     SAVEPATH = "d:\\ch\\"
 
     # write save files
     SAVEGAME = True
 
-    # what level to level Masked Samurai to
-    SAMURAI = 3200
+    # number of levels to skip at the start, progressively, levelskip * times 20, for Iris
+    LEVELSKIP = 10
 
-    # what zone to reach before ascending
-    MAXZONE = 2010
+    # exit after ascending
+    EXITASCEND = False
+
+    # use this key to activate autoclicker
+    AUTOCLICKERKEY = Key.F8
+
+    # options "Samurai" "Midas" "Frostleaf" "DreadKnight" "Atlas" "Terra" "Phthalo" "Orntchya"
+    INITIALHERO = "Phthalo"
+
+    # level to at least this level:
+    INITIALLVL = 1000
+
+    # stop clicking fish when past this zone
+    NOFISHZONE = 2370
+
+    # start clicking monsters past this zone
+    DEEPZONE = 2080
+
+    # wait for a fish and ascend at this zone
+    MAXZONE = 2520
+
