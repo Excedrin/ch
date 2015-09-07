@@ -16,6 +16,9 @@ SAVEPATH = "d:\\ch\\"
 SAVEGAME = True
 
 # number of levels to skip at the start, progressively, levelskip * times 20, for Iris
+# this feature doesn't really work and hopefully isn't used much,
+# it should only be active when there's no fish available to click at the start,
+# TODO: add better/actual Midas start to handle this case
 LEVELSKIP = 10
 
 # exit after ascending
@@ -31,13 +34,24 @@ INITIALHERO = "Phthalo"
 INITIALLVL = 1000
 
 # stop clicking fish when past this zone
-NOFISHZONE = 2370
+NOFISHZONE = 2400
 
 # start clicking monsters past this zone
-DEEPZONE = 2080
+DEEPZONE = 2300
 
 # wait for a fish and ascend at this zone
-MAXZONE = 2520
+MAXZONE = 2450
+
+# Ascend upon finding relic
+RELICASCEND = True
+
+# What combo to repeat when clicking monsters, it just blindly hits this repeatedly,
+# so probably a good idea to remove '5' if you're doing a deep run
+# it activates DR with '869' periodically (but hopefully only when they're all available
+ACTIVECOMBO = '123457'
+
+# How long to wait before trying to level the best hero when clicking monsters
+CLICKTIME = 150
 
 ###############
 
@@ -58,7 +72,6 @@ def resetstate():
         'ascendSoon': False,
         'besthero': False,
         'hired': 0,
-        'frostleaf': 0,
         'starttime': time.time(),
         'wait': False,
         'primalSouls': 0,
@@ -73,7 +86,8 @@ def resetstate():
         'rubies': 0,
         'totalHeroSouls': 0,
         'currentZoneHeight': 0,
-        'gold': 0
+        'maxrate': 0,
+        'maxratelvl': 0
     }
 
 def timediff(start, end=None):
@@ -108,10 +122,10 @@ def qclick(thing):
     return zclick(thing, 1, 'q')
 
 # find fish
-def fish():
+def fish(checkonly=False):
     if exists(Pattern("1439028358739.png").similar(0.85),0):
-        if state['ascendSoon'] or state['highestFinishedZone'] > NOFISHZONE:
-            Debug.user("ascending soon, saving fish")
+        if checkonly or state['ascendSoon'] or state['highestFinishedZone'] > NOFISHZONE:
+            Debug.user("fish present, not clicking")
         else:
             click()
             Debug.user("fish")
@@ -124,6 +138,8 @@ def rest(delay=0.1):
         hover(getLastMatch())
     if state['highestFinishedZone'] > DEEPZONE or state['highestFinishedZone'] > MAXZONE:
         nearShop(click)
+    else:
+        nearShop(lambda x: x)
 
     wait(delay)
 
@@ -140,6 +156,11 @@ def decodeSave(dat):
 
     savegame = json.loads(base64.b64decode(txt))
     return json.loads(base64.b64decode(txt))
+
+def relicfound(save):
+    found = len(save['items']['items']) >= 5
+    Debug.user("Relic found: %s" %(found))
+    return found
 
 def checkrelics(save):
     found = False
@@ -179,7 +200,6 @@ def updateFromSave():
     save = decodeSave(savedata)
 
     state['initial'] = save['heroCollection']['heroes'][unicode(heroidx[INITIALHERO])]['level']
-    state['frostleaf'] = save['heroCollection']['heroes'][unicode(heroidx['Frostleaf'])]['level']
 
     maxGildIdx = 0
     maxGild = 0
@@ -219,9 +239,11 @@ def saveGame(savefile=True):
     if not SAVEGAME:
         savefile = False
 
+    # wrench icon
     if exists(Pattern("1439437506317.png").similar(0.90), 1):
         click()
         wait(1)
+        # Save button
         if exists(Pattern("1439437547153.png").similar(0.80), 1):
             click()
             wait(1)
@@ -234,15 +256,19 @@ def saveGame(savefile=True):
                 keyUp(Key.ENTER)
                 wait(1)
             else:
-                wait(1)
+                wait(0.1)
                 keyDown(Key.ESC)
                 wait(0.05)
                 keyUp(Key.ESC)
-                wait(1)
+                wait(0.1)
 
             wait(1)
-            if exists(Pattern("1439437994711.png").similar(0.80), 1):
+            # X
+            while exists(Pattern("1439437994711.png").similar(0.80), 1):
                 click()
+                wait(0.1)
+
+    rest()
 
     return Env.getClipboard()
 
@@ -280,6 +306,8 @@ def findUp(thing, func, args=[]):
         # scrolled to top
         if exists(Pattern("1439025863027.png").similar(0.83),0):
             break
+
+    rest()
 
     if exists(thing, 0):
         return func(thing, *args)
@@ -346,7 +374,12 @@ def calcrate():
     if diff > 0:
         rate = collectedsouls / diff
 
-    Debug.user("Time for this run: %s rate: %f" % (diffstr, rate))
+    if rate > state['maxrate']:
+        state['maxrate'] = rate
+        state['maxratelvl'] = state['highestFinishedZone']
+
+    Debug.user("Time for this run: %s rate: %f zone: %d maxrate %d maxratelvl %d" % (diffstr, rate,
+        state['highestFinishedZone'], state['maxrate'], state['maxratelvl']))
 
 def ascend():
     Debug.user("ascending now")
@@ -397,7 +430,7 @@ def hireHeroes():
 
     Debug.user("findDown hire: %s" %(state['hired']))
     hired = state['hired']
-    while findDown(Pattern("1439151880109.png").similar(0.90), zclick, [8]):
+    while findDown(Pattern("1439151880109.png").similar(0.90), zclick, [2, Key.CTRL]):
         rest(0.01)
 
         hired += 1
@@ -425,39 +458,55 @@ def clicker(monsterArea, duration):
 
     hover(monsterArea)
     wait(0.1)
-    keyDown(AUTOCLICKERKEY)
+    keyDown(Key.F8)
     wait(0.1)
-    keyUp(AUTOCLICKERKEY)
+    keyUp(Key.F8)
 
     while remaining > 0:
         Debug.user("click monsters remaining time: %d" %(remaining))
 
-        keyDown(AUTOCLICKERKEY)
-        wait(0.1)
-        keyUp(AUTOCLICKERKEY)
+        if not state['ascendSoon']:
+            if fish(True):
+                keyDown(Key.F8)
+                wait(0.1)
+                keyUp(Key.F8)
 
-        fish()
+                fish()
 
-        keyDown(AUTOCLICKERKEY)
-        wait(0.1)
-        keyUp(AUTOCLICKERKEY)
+                keyDown(Key.F8)
+                wait(0.1)
+                keyUp(Key.F8)
 
         hover(monsterArea)
 
-        type('123457')
+        type(ACTIVECOMBO)
         wait(10)
 
         remaining = endtime - time.time()
 
-    keyDown(AUTOCLICKERKEY)
+    keyDown(Key.F8)
     wait(0.1)
-    keyUp(AUTOCLICKERKEY)
+    keyUp(Key.F8)
 
     wait(3)
 
 def clickMonsters(duration=150):
     progressMode()
     nearShop(lambda x: clicker(x, duration))
+
+def checkSkillCooldown(save):
+    longts = save['unixTimestamp']
+
+    for k in ['skillClickMultiplierEnd', 'skillCriticalClickChanceEnd', 'skillDpsMultiplierEnd', 'skillFreeClicksEnd', 'skillGoldBonusEnd', 'skillWildGoldEnd', 'startTimestamp', 'unixTimestamp']:
+        state[k] = save[k]
+        Debug.user("%s: %s"%(k, save[k]))
+
+    Debug.user("ts: %d cooldowns: %s" % (longts, save['skillCooldowns']))
+    skills = {}
+    for skill, cooldown in save['skillCooldowns'].items():
+        skills[skill] = longts >= cooldown
+
+    return skills
 
 ###############
 
@@ -488,6 +537,24 @@ if LOGFILEPATH:
     Debug.on(2)
     Debug.setLogFile(LOGFILEPATH)
 
+#wait(1)
+
+#keyDown(Key.F8)
+#wait(0.1)
+#keyUp(Key.F8)
+
+for x in range(2):
+    keyDown(Key.ESC)
+    wait(0.05)
+    keyUp(Key.ESC)
+    wait(1)
+
+# click the X
+if exists(Pattern("1439437994711.png").similar(0.80)):
+    click()
+
+#Debug.user("screenshot: %s" % SCREEN.capture(0,0,1919,1079))
+
 # find top crossed swords to make the window active
 if exists(Pattern("1439025078984.png").similar(0.90)):
     click()
@@ -503,6 +570,10 @@ if exists(Pattern("1439025078984.png").similar(0.90)):
 resetstate()
 save = updateFromSave()
 dumpHeroInfo(save)
+
+#Debug.user("skills: %s" % checkSkillCooldown(save))
+#sys.exit(1)
+
 state['primalSoulsStart'] = state['primalSouls']
 
 Debug.user("")
@@ -516,17 +587,24 @@ while True:
         popup("Sikulix paused")
         # toggle wait off
         waithotkey(None)
+
+#        pos = Env.getMouseLocation()
+#        Debug.user("Wait a while %s"%(pos))
+#        wait(1)
         continue
 
     # past ideal zone
-    if state['highestFinishedZone'] > NOFISHZONE:
+    if state['highestFinishedZone'] > NOFISHZONE or (RELICASCEND and relicfound(save)):
         state['ascendSoon'] = True
         Debug.user("Ascend Soon")
 
     if state['highestFinishedZone'] > DEEPZONE or state['highestFinishedZone'] > MAXZONE:
-        clickMonsters()
+        clickMonsters(CLICKTIME)
 
-    if (state['ascendSoon'] and fish() and state['highestFinishedZone'] > MAXZONE) or state['ascendNow']:
+    if (fish(True) and \
+            (state['highestFinishedZone'] > MAXZONE or (RELICASCEND and relicfound(save)))) \
+        or state['ascendNow']:
+
         Debug.user("Ascend Now")
         dumpHeroInfo(save)
         ascend()
@@ -555,7 +633,8 @@ while True:
             buyUpgrades()
             scrollTop()
 
-            clickMonsters(60)
+            type("5")
+            clickMonsters(90)
             locateHero(INITIALHERO, qclick)
         else:
             first = True
