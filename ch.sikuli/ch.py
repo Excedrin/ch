@@ -16,10 +16,8 @@ SAVEPATH = "d:\\ch\\"
 SAVEGAME = True
 
 # number of levels to skip at the start, progressively, levelskip * times 20, for Iris
-# this feature doesn't really work and hopefully isn't used much,
-# it should only be active when there's no fish available to click at the start,
-# TODO: add better/actual Midas start to handle this case
-LEVELSKIP = 10
+# how many levels to skip after leveling Natalia, times 20, so 4 means lvl 80
+LEVELSKIP = 4
 
 # exit after ascending
 EXITASCEND = False
@@ -82,9 +80,9 @@ def resetstate():
         'gild1level': 0,
         'gild2level': 0,
 
-        'highestFinishedZone': 0,
-        'rubies': 0,
-        'totalHeroSouls': 0,
+        'highestFinishedZone': 0, 
+        'rubies': 0, 
+        'totalHeroSouls': 0, 
         'currentZoneHeight': 0,
         'maxrate': 0,
         'maxratelvl': 0
@@ -159,7 +157,8 @@ def decodeSave(dat):
 
 def relicfound(save):
     found = len(save['items']['items']) >= 5
-    Debug.user("Relic found: %s" %(found))
+    if found:
+        Debug.user("Relic found: %d" %(save['items']['_currentUids']['items']))
     return found
 
 def checkrelics(save):
@@ -233,7 +232,7 @@ def allHired(save):
         b = b and save['heroCollection']['heroes'][unicode(x)]['level'] >= 200
         #Debug.user("idx: %d level: %d" %(x, save['heroCollection']['heroes'][unicode(x)]['level']))
 
-    return b
+    return b        
 
 def saveGame(savefile=True):
     if not SAVEGAME:
@@ -356,6 +355,7 @@ def scrollTop():
 def locateHero(hero, func, args=[]):
     Debug.user("findUp %s" %(hero))
     heropatterns = {
+        "Natalia": Pattern("Natalia.png").similar(0.90).targetOffset(-211,3),
         "Samurai": Pattern("Samurai.png").targetOffset(-230,0),
         "Midas": Pattern("Midas.png").targetOffset(-242,7),
         "Frostleaf": Pattern("Frostleaf.png").targetOffset(-255,7),
@@ -377,8 +377,8 @@ def calcrate():
     if rate > state['maxrate']:
         state['maxrate'] = rate
         state['maxratelvl'] = state['highestFinishedZone']
-
-    Debug.user("Time for this run: %s rate: %f zone: %d maxrate %d maxratelvl %d" % (diffstr, rate,
+        
+    Debug.user("Time for this run: %s rate: %f zone: %d maxrate %d maxratelvl %d" % (diffstr, rate, 
         state['highestFinishedZone'], state['maxrate'], state['maxratelvl']))
 
 def ascend():
@@ -479,7 +479,7 @@ def clicker(monsterArea, duration):
 
         hover(monsterArea)
 
-        type(ACTIVECOMBO)
+        type('12347')
         wait(10)
 
         remaining = endtime - time.time()
@@ -593,6 +593,9 @@ while True:
 #        wait(1)
         continue
 
+    if RELICASCEND and relicfound(save):
+        state['ascendNow'] = True
+
     # past ideal zone
     if state['highestFinishedZone'] > NOFISHZONE or (RELICASCEND and relicfound(save)):
         state['ascendSoon'] = True
@@ -624,20 +627,9 @@ while True:
         if fish():
             Debug.user("Found fish, waiting..")
             wait(5)
-
-            locateHero("Midas", zclick, [8])
-            locateHero(INITIALHERO, qclick)
-            progressMode()
-
-            scrollBottom()
-            buyUpgrades()
-            scrollTop()
-
-            type("5")
-            clickMonsters(90)
-            locateHero(INITIALHERO, qclick)
         else:
             first = True
+            locateHero("Natalia", click)
 
             for x in range(LEVELSKIP):
                 # skip levels, next level arrow
@@ -646,17 +638,24 @@ while True:
                 # space next to next level arrow
                 clickn(Pattern("1439078366733.png").targetOffset(-60,0), 1)
 
-                # click next to shop
-                if first:
-                    nearShop(lambda x: clickn(x, 25))
-                    first = False
-
-                locateHero(INITIALHERO, qclick)
-
                 # necessary to wait a bit at each step in order to collect enough gold to progress
                 wait(2)
 
+        # Typical Midas start
+        locateHero("Midas", zclick, [8])
         progressMode()
+
+        scrollBottom()
+        buyUpgrades()
+        wait(1)
+
+        type('5')
+        clickMonsters(30)
+        locateHero(INITIALHERO, qclick)
+        clickMonsters(60)
+
+        progressMode()
+        locateHero("Natalia", zclick, [8])
 
     elif state['initial'] < INITIALLVL:
         scrollTop()
