@@ -355,7 +355,7 @@ def scrollTop():
 def locateHero(hero, func, args=[]):
     Debug.user("findUp %s" %(hero))
     heropatterns = {
-        "Natalia": Pattern("Natalia.png").similar(0.90).targetOffset(-211,3),
+        "Natalia": Pattern("Natalia.png").similar(0.90).targetOffset(-211,7),
         "Samurai": Pattern("Samurai.png").targetOffset(-230,0),
         "Midas": Pattern("Midas.png").targetOffset(-242,7),
         "Frostleaf": Pattern("Frostleaf.png").targetOffset(-255,7),
@@ -629,7 +629,7 @@ while True:
             wait(5)
         else:
             first = True
-            locateHero("Natalia", click)
+            locateHero("Natalia", zclick, [1])
 
             for x in range(LEVELSKIP):
                 # skip levels, next level arrow
