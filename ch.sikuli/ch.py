@@ -41,7 +41,7 @@ DEEPZONE = 2300
 MAXZONE = 2450
 
 # Ascend upon finding relic
-RELICASCEND = True
+RELICASCEND = False
 
 # What combo to repeat when clicking monsters, it just blindly hits this repeatedly,
 # so probably a good idea to remove '5' if you're doing a deep run

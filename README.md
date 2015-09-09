@@ -78,3 +78,5 @@ Save game, filename based on the date and time.
     # wait for a fish and ascend at this zone
     MAXZONE = 2520
 
+    # Ascend immediately after finding a relic
+    RELICASCEND = False
